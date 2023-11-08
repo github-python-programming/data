@@ -8,6 +8,6 @@ A pasta está estruturada da seguinte forma:
 
 - `data/`: Esta pasta contém arquivos CSV.
 
-- `scripts/`: Esta pasta contém o script em Python.
+- `script/`: Esta pasta contém o script em Python.
 
-- `docs/`: Esta pasta contém informações acerca da coleta de dados de cada figura.
+- `doc/`: Esta pasta contém informações acerca da coleta de dados de determiandas figuras.
