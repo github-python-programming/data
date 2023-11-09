@@ -1,0 +1,743 @@
+# coleta de dados
+import requests
+from parsel import Selector
+import sidrapy
+
+# manipulação dos dados
+import pandas as pd
+import numpy as np
+import io
+import zipfile
+import unicodedata
+
+# sistema
+import os
+import sys
+import datetime
+from time import sleep
+import random
+
+# github
+from github import Github
+from github import Auth
+
+# ************************
+# CONSTANTES
+# ************************
+
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36(KHTML, like Gecko) '
+                         'Chrome/118.0.0.0 Safari/537.36'}
+
+git_doc_path = 'https://raw.githubusercontent.com/github-python-programming/data/main/doc-links.json'
+
+script_path = os.getcwd()
+dir_name = 'to_github/data'
+dir_path = os.path.join(script_path, dir_name)
+
+
+# ************************
+# FUNÇÕES
+# ************************
+
+# adiciona certo delay às requisições
+def delay_requests(maximum):
+    sleep(random.random() * maximum)
+
+
+# faz requisições aos sites
+def open_url(path: str):
+    r = requests.get(path, headers=headers)
+    delay_requests(2)
+    return r
+
+
+# faz requisições aos site e passa o html para o selector de tags
+def get_html(path: str):
+    r = requests.get(path, headers=headers)
+    sel = Selector(text=r.text)
+    delay_requests(2)
+    return sel
+
+
+# abre os arquivos baixados
+def open_file(file_path=None, ext=None, sep=',', skiprows=None, excel_name=None, sheet_name=None):
+    if ext == 'csv':
+        dataframe = pd.read_csv(io.BytesIO(file_path), encoding='utf-8', sep=sep, decimal=',')
+        return dataframe
+    elif ext == 'xls':
+        dataframe = pd.read_excel(io.BytesIO(file_path),
+                                  decimal=',', sheet_name=sheet_name, skiprows=skiprows)
+        return dataframe
+    else:
+        with zipfile.ZipFile(io.BytesIO(file_path), 'r') as zfile:
+            excel_tables = zfile.namelist()
+            for e_tb in excel_tables:
+                if e_tb.startswith(excel_name):
+                    excel_content = zfile.read(e_tb)
+        dataframe = pd.read_excel(io.BytesIO(excel_content),
+                                  decimal=',', sheet_name=sheet_name, skiprows=skiprows)
+        return dataframe
+
+
+# converte dataframes em arquivos csv
+def to_csv(data_to_convert, data_name):
+    data_to_convert.to_csv(os.path.join(dir_path, data_name),
+                           encoding='utf-8', decimal=',', index=False)
+
+
+# remove acentuação do título do gráfico
+def remove_accent(text):
+    clean_text = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
+    return clean_text
+
+
+# criação do diretório
+if not os.path.exists(dir_path):
+    os.mkdir(dir_name)
+
+# ************************
+# EXTRAÇÃO DE DADOS POR MÉTODO DE COLETA WEB SCRAPING
+# ************************
+
+# coleta de informações sobre os gráficos
+git_doc = open_url(git_doc_path)
+doc = pd.DataFrame(git_doc.json())
+doc_scraping = doc.loc[doc['method'] == 'scraping'].reset_index(drop=True)
+
+# for fig, url in zip(doc_scraping['figure'], doc_scraping['url']):
+#     if fig.startswith('Gráfico 7.1'):
+#         print(f'A baixar o arquivo da url:\n {url} ...')
+#
+#         # downloading do arquivo
+#         xpath = '/html/body/form/div[3]/div[2]/section/div[2]/div/span/div[2]/div[1]/div[5]/div/div/div/div[' \
+#                 '2]/div/table/tbody/tr/td[2]/a/@href'
+#         html = get_html(url)
+#         html_urls = html.xpath(xpath).getall()
+#         url_to_get = [item for item in html_urls if item.endswith('.xlsx') or item.endswith('.xls')][0]
+#         url_to_get = 'https://www.epe.gov.br' + url_to_get
+#         file = open_url(url_to_get)
+#
+#         # organização do arquivo
+#         # seleção das colunas e das linhas de interesse
+#         df = open_file(file.content, 'xls', sheet_name='Tabela 3.63', skiprows=8)
+#         df = df.iloc[:, 1:12]
+#         df = df.loc[df[' '].isin(['Brasil', 'Nordeste', 'Sergipe'])]
+#
+#         # reordenação da variável ano para o eixo y
+#         # renomeação do rótulo da coluna de ' ' para 'Região'
+#         # ordenação alfabética da coluna 'Região' e cronológica da coluna 'Ano'
+#         df_melted = df.melt(id_vars=[' '], value_vars=[str(y) for y in np.arange(2013, 2023)], var_name=['Ano'],
+#                             value_name='Valor')
+#         df_melted.rename(columns={' ': 'Região'}, inplace=True)
+#         df_melted.sort_values(by=['Região', 'Ano'], ascending=[True, True], inplace=True)
+#
+#         # classificação dos valores em cada coluna
+#         df_melted[df_melted.columns[0]] = df_melted[df_melted.columns[0]].astype('str')
+#         df_melted[df_melted.columns[1]] = pd.to_datetime(df_melted[df_melted.columns[1]], format='%Y')
+#         df_melted[df_melted.columns[2]] = df_melted[df_melted.columns[2]].astype('float64')
+#
+#         # tratamento do título da figura para nomeação do arquivo csv
+#         g_name = remove_accent(fig.split(':')[0].lower().replace(' ', '_').replace('.', '-') + '_')
+#         to_csv(df_melted, g_name + 'epe-anuario-energia.csv')
+#
+#     elif fig.startswith('Gráfico 8.1'):
+#         print(f'A baixar o arquivo da url:\n {url} ...')
+#
+#         # downloading do arquivo
+#         xpath = '/html/body/div[2]/div[1]/main/div[2]/div/div[4]/div/ul[1]/li[2]/a/@href'
+#         html = get_html(url)
+#         url_to_get = html.xpath(xpath).get()
+#         file = open_url(url_to_get)
+#
+#         # organização do arquivo
+#         # dados sobre sergipe
+#         # remoção de variáveis não utilizáveis
+#         # adição da identificação da região
+#         df = open_file(file.content, 'csv', ';')
+#         df_se = df.loc[df['UNIDADE DA FEDERAÇÃO'] == 'SERGIPE']
+#         df_se = df_se.drop(['GRANDE REGIÃO', 'UNIDADE DA FEDERAÇÃO', 'PRODUTO'], axis='columns')
+#         df_se['REGIÃO'] = 'SERGIPE'
+#
+#         # dados sobre nordeste
+#         # adição da identificação da região
+#         df_ne = df.loc[df['GRANDE REGIÃO'] == 'REGIÃO NORDESTE']
+#         df_ne = df_ne.groupby(['ANO', 'MÊS', 'LOCALIZAÇÃO'])['PRODUÇÃO'].sum().reset_index()
+#         df_ne['REGIÃO'] = 'NORDESTE'
+#
+#         # dados sobre brasil
+#         # adição da identificação da região
+#         df_br = df.groupby(['ANO', 'MÊS', 'LOCALIZAÇÃO'])['PRODUÇÃO'].sum().reset_index()
+#         df_br['REGIÃO'] = 'BRASIL'
+#
+#         # união dos dfs
+#         df_concat = pd.concat([df_br, df_ne, df_se], ignore_index=True)
+#         df_concat = df_concat.sort_values(by=['REGIÃO', 'ANO', 'LOCALIZAÇÃO'], ascending=[True] * 3)
+#
+#         # classificação dos dados
+#         df_concat[df_concat.columns[0]] = pd.to_datetime(df_concat[df_concat.columns[0]], format='%Y')
+#         df_concat[df_concat.columns[1:3]] = df_concat[df_concat.columns[1:3]].astype('str')
+#         df_concat[df_concat.columns[3]] = df_concat[df_concat.columns[3]].astype('float64')
+#         df_concat[df_concat.columns[-1]] = df_concat[df_concat.columns[-1]].astype('str')
+#
+#         # tratamento do título da figura para nomeação do arquivo csv
+#         g_name = remove_accent(fig.split(':')[0].lower().replace(' ', '_').replace('.', '-') + '_')
+#         to_csv(df_concat, g_name + 'anp_producao_petroleo.csv')
+#
+#     elif fig.startswith('Gráfico 8.2'):
+#         print(f'A baixar o arquivo da url:\n {url} ...')
+#
+#         # downloading do arquivo
+#         xpath = '/html/body/div[2]/div[1]/main/div[2]/div/div[4]/div/ul[3]/li[2]/a/@href'
+#         html = get_html(url)
+#         url_to_get = html.xpath(xpath).get()
+#         file = open_url(url_to_get)
+#
+#         # dados sobre sergipe
+#         # seleção das variáveis de interesse
+#         # adição da variável 'REGIÃO'
+#         df = open_file(file.content, 'csv', sep=';')
+#         df_se = df.loc[df['UNIDADE DA FEDERAÇÃO'] == 'SERGIPE']
+#         df_se = df_se.groupby(['ANO', 'MÊS', 'LOCALIZAÇÃO', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_se['REGIÃO'] = 'SERGIPE'
+#
+#         # dados sobre nordeste
+#         # seleção das variáveis de interesse
+#         # adição da variável 'REGIÃO'
+#         df_ne = df.loc[df['GRANDE REGIÃO'] == 'REGIÃO NORDESTE']
+#         df_ne = df_ne.groupby(['ANO', 'MÊS', 'LOCALIZAÇÃO', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_ne['REGIÃO'] = 'NORDESTE'
+#
+#         # dados sobre brasil
+#         # seleção das variáveis de interesse
+#         # adição da variável 'REGIÃO'
+#         df_br = df.groupby(['ANO', 'MÊS', 'LOCALIZAÇÃO', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_br['REGIÃO'] = 'BRASIL'
+#
+#         # união dos dfs
+#         # ordenação ascendente dos valores de 'REGIÃO', 'ANO' E 'LOCALIZAÇÃO'
+#         df_gas = pd.concat([df_br, df_ne, df_se], ignore_index=True)
+#         df_gas = df_gas.sort_values(by=['REGIÃO', 'ANO', 'LOCALIZAÇÃO'], ascending=[True] * 3)
+#
+#         # downloading do segundo arquivo
+#         xpath = '/html/body/div[2]/div[1]/main/div[2]/div/div[4]/div/ul[2]/li[2]/a/@href'
+#         url_to_get = html.xpath(xpath).get()
+#         file = open_url(url_to_get)
+#
+#         # dados sobre sergipe
+#         # seleção das variáveis de interesse
+#         # adição da variável 'LOCALIZAÇÃO'
+#         # adição da variável 'REGIÃO'
+#         df = open_file(file.content, 'csv', sep=';')
+#         df_se = df.loc[df['UNIDADE DA FEDERAÇÃO'] == 'SERGIPE']
+#         df_se = df_se.groupby(['ANO', 'MÊS', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_se['LOCALIZAÇÃO'] = 'NÃO SE APLICA'
+#         df_se['REGIÃO'] = 'SERGIPE'
+#
+#         # dados sobre nordeste
+#         # seleção das variáveis de interesse
+#         # adição da variável 'LOCALIZAÇÃO'
+#         # adição da variável 'REGIÃO'
+#         df_ne = df.loc[df['GRANDE REGIÃO'] == 'REGIÃO NORDESTE']
+#         df_ne = df_ne.groupby(['ANO', 'MÊS', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_ne['LOCALIZAÇÃO'] = 'NÃO SE APLICA'
+#         df_ne['REGIÃO'] = 'NORDESTE'
+#
+#         # dados sobre brasil
+#         # seleção das variáveis de interesse
+#         # adição da variável 'LOCALIZAÇÃO'
+#         # adição da variável 'REGIÃO'
+#         df_br = df.groupby(['ANO', 'MÊS', 'PRODUTO'])['PRODUÇÃO'].sum().reset_index()
+#         df_br['LOCALIZAÇÃO'] = 'NÃO SE APLICA'
+#         df_br['REGIÃO'] = 'BRASIL'
+#
+#         # união dos dfs
+#         # ordenação ascendente dos valores de 'REGIÃO', 'ANO' E 'LOCALIZAÇÃO'
+#         # reordenação das colunas para união entre os dfs da produção de gás e da produção de lgn
+#         df_lgn = pd.concat([df_br, df_ne, df_se], ignore_index=True)
+#         df_lgn = df_lgn.sort_values(by=['REGIÃO', 'ANO', 'LOCALIZAÇÃO'], ascending=[True] * 3)
+#         df_lgn = df_lgn[['ANO', 'MÊS', 'LOCALIZAÇÃO', 'PRODUTO', 'PRODUÇÃO', 'REGIÃO']]
+#
+#         # união das tabelas de ambos os arquivos
+#         # classificação dos dados
+#         df_concat = pd.concat([df_gas, df_lgn], ignore_index=True)
+#         df_concat[df_concat.columns[0]] = pd.to_datetime(df_concat[df_concat.columns[0]], format='%Y')
+#         df_concat[df_concat.columns[1:4]] = df_concat[df_concat.columns[1:4]].astype('str')
+#         df_concat[df_concat.columns[-2]] = df_concat[df_concat.columns[-2]].astype('float64')
+#         df_concat[df_concat.columns[-1]] = df_concat[df_concat.columns[-1]].astype('str')
+#
+#         # tratamento do título da figura para nomeação do arquivo
+#         # conversão em arquivo csv
+#         g_name = remove_accent(fig.split(':')[0].lower().replace(' ', '_').replace('.', '-') + '_')
+#         to_csv(df_concat, g_name + 'anp_producao_gas_e_lgn.csv')
+
+# ************************
+# EXTRAÇÃO DE DADOS POR MÉTODO DE COLETA API
+# IBGE CONTAS REGIONAIS, IBGE INDICADORES SOCIAIS, SICONFI TESOURO
+# ************************
+
+doc_api = doc.loc[doc['method'] == 'API'].reset_index(drop=True)
+api_url = set(doc_api['url'].to_list())
+
+for url in api_url:
+
+    # downloading dos arquivos com fonte: sistema de contas regionais
+    if url.endswith('Contas_Regionais'):
+        continue
+        print(f'A baixar o arquivo da url:\n {url} ...')
+        response = open_url(url)
+        df = pd.DataFrame(response.json())
+
+        # pequisa pela publicação mais recente --> inicia com '2' e possui 4 caracteres
+        df = df.loc[(df['name'].str.startswith('2')) &
+                    (df['name'].str.len() == 4),
+                    ['name', 'path']].sort_values(by='name', ascending=False).reset_index(drop=True)
+
+        # obtém o caminho da publicação mais recente e adiciona à url de acesso aos arquivos
+        url_to_get = df['path'][0][-5:] + '/xls'
+        response = open_url(url + url_to_get)
+        df = pd.DataFrame(response.json())
+        url_to_get_pib = df.loc[df['name'].str.startswith('PIB_Otica_Renda'), 'url'].values[0]
+        url_to_get_esp = df.loc[(df['name'].str.startswith('Especiais_2010')) &
+                                (df['name'].str.endswith('.zip')), 'url'].values[0]
+
+        # downloading e organização do arquivo pib pela ótica da renda
+        file = open_url(url_to_get_pib)
+        df = open_file(file.content, 'xls', skiprows=8)
+        tables = ['Tabela1', 'Tabela10', 'Tabela18']
+
+        mapping = {
+            'grafico_1-5': 'Salários',
+            'grafico_1-6': 'Contribuição social',
+            'grafico_1-7': 'Impostos sobre produto, líquidos de subsídios',
+            'grafico_1-8': 'Excedente Operacional Bruto (EOB) e Rendimento Misto (RM)'
+        }
+
+        # seleção das tabelas e componentes de interesse
+        for k, v in mapping.items():
+            dfs = []
+            for tb in tables:
+                # seleção de linhas não vazias
+                # renomeação da coluna
+                df_tb = df[tb]
+                df_tb = df_tb.iloc[:9]
+                df_tb = df_tb.rename(columns={'Unnamed: 0': 'Componente'})
+
+                # reordenação da variável ano para o eixo y
+                # seleção das linhas e das colunas de interesse
+                df_melted = pd.melt(df_tb, id_vars=['Componente'], value_vars=df_tb.columns[1:], var_name=['Ano'],
+                                    value_name='Valor')
+                df_melted = df_melted.loc[(df_melted['Componente'] == v) &
+                                          (df_melted['Ano'].str.endswith('.1'))]
+
+                # remoção do ".1" ao final dos valores de Ano
+                # decorrentes da ordenação padrão das variáveis Ano como colunas
+                df_melted.loc[:, 'Ano'] = df_melted.loc[:, 'Ano'].apply(lambda x: x[:-2])
+
+                # adição da variável região
+                df_melted['Região'] = 'Brasil' if tb.endswith('1') else ('Nordeste' if tb.endswith('10') else 'Sergipe')
+
+                # classificação dos dados
+                df_melted[df_melted.columns[0]] = df_melted[df_melted.columns[0]].astype('str')
+                df_melted[df_melted.columns[1]] = pd.to_datetime(df_melted[df_melted.columns[1]])
+                df_melted[df_melted.columns[2]] = df_melted[df_melted.columns[2]].astype('float64')
+                df_melted[df_melted.columns[3]] = df_melted[df_melted.columns[3]].astype('str')
+
+                dfs.append(df_melted)
+
+            # conversão para arquivo csv
+            df_concat = pd.concat(dfs, ignore_index=True)
+            to_csv(df_concat, k + '_ibge_pib_otica_renda.csv')
+
+        # downloading e organização do arquivo especiais 2010
+        file = open_url(url_to_get_esp)
+        df = open_file(file.content, 'zip', excel_name='tab07.xls', skiprows=4)
+
+        # seleção das tabelas de interesse
+        tables = ['Tabela7.1', 'Tabela7.10', 'Tabela7.18']
+        dfs = []
+        for tb in tables:
+            df_tb = df[tb]
+
+            # renomeação do coluna de 'Unnamed: 0' para 'Atividade'
+            # seleção das linhas de interesse
+            df_tb.rename(columns={'Unnamed: 0': 'Atividade'}, inplace=True)
+            df_tb = df_tb.iloc[2:23]
+
+            # reordenação da variável ano para o eixo y
+            df_melted = pd.melt(df_tb, id_vars=['Atividade'], value_vars=[y for y in np.arange(2010, 2021)],
+                                var_name=['Ano'], value_name='Valor')
+
+            # classificação dos dados por setor econômico
+
+            '''
+            Originalmente, os dados referentes ao setor e às atividades estão armazenados na mesma coluna.
+            A cada ocorrência do valor 'Agropecuária', por exemplo, será coletado o seu índice, 
+            ponto de início da seleção dos valores.
+            O índice, então, é somado à quantia de atividades deste setor (neste caso 3) mais 1, 
+            ponto de término da seleção dos valores.
+            A mesma operação é realizada para os outros dois setores econômicos.
+            '''
+
+            df_melted['Setor'] = ''
+
+            agro_index = df_melted.loc[df_melted['Atividade'] == 'Agropecuária'].index
+            ind_index = df_melted.loc[df_melted['Atividade'] == 'Indústria'].index
+            serv_index = df_melted.loc[df_melted['Atividade'] == 'Serviços'].index
+
+            for agro, ind, serv in zip(agro_index, ind_index, serv_index):
+                df_melted.iloc[agro:agro + 4, -1] = 'Agropecuária'
+                df_melted.iloc[ind:ind + 5, -1] = 'Indústria'
+                df_melted.iloc[serv:serv + 12, -1] = 'Serviços'
+
+            # remoção dos valores referentes ao setor da coluna 'Atividade'
+            # adição da variável região
+            df_melted.drop(list(agro_index) + list(ind_index) + list(serv_index), axis='index', inplace=True)
+            df_melted['Região'] = 'Brasil' if tb.endswith('7.1') else ('Nordeste' if tb.endswith('7.10') else 'Sergipe')
+
+            dfs.append(df_melted)
+
+        # união dos dfs
+        # reordenação das colunas
+        df_concat = pd.concat(dfs, ignore_index=True)
+        df_concat = df_concat[['Região', 'Setor', 'Atividade', 'Ano', 'Valor']]
+
+        # classificação dos dados
+        df_concat[df_concat.columns[0:3]] = df_concat[df_concat.columns[0:3]].astype('str')
+        df_concat[df_concat.columns[-2]] = pd.to_datetime(df_concat[df_concat.columns[-2]], format='%Y')
+        df_concat[df_concat.columns[-1]] = df_concat[df_concat.columns[-1]].astype('float64')
+
+        # conversão em arquivo csv
+        to_csv(df_concat, 'tabela_1-1_ibge_especiais.csv')
+
+    elif url.endswith('Sintese_de_Indicadores_Sociais'):
+        continue
+        print(f'A baixar o arquivo da url:\n {url} ...')
+        response = open_url(url)
+
+        # verifica a última publicação
+        url_to_last_pub = url + '/' + response.json()[-2]['path'].split('/')[-1] + '/xls'
+        response = open_url(url_to_last_pub)
+
+        # coleta o link do arquivo
+        url_to_file = response.json()[0]['url']
+        file = open_url(url_to_file)
+
+        # seleção das abas de interesse
+        df = open_file(file.content, 'zip', excel_name='Tabela 1.40', skiprows=6)
+
+        # seleção das abas de interesse
+        tables = []
+        for table in df.keys():
+            if not table.endswith('(CV)'):
+                tables.append(table)
+
+        # união das tabelas de interesse
+        dfs = []
+        for tb in tables:
+            # seleção das linhas e colunas de interesse
+            # renomeação da coluna de 'Unnamed: 0' para 'Região' e remoção do .1 dos rótulos das colunas,
+            # decorrentes da repetição de valores como rótulos
+            df_tb = df[tb]
+            df_tb = df_tb.iloc[2:35, [0] + list(np.arange(5, 9))]
+            df_tb.columns = ['Região'] + [col[:-2] for col in df_tb.columns if col != 'Unnamed: 0']
+
+            # reordenação da variável ocupação para o eixo y
+            df_melted = pd.melt(df_tb, id_vars=['Região'], value_vars=df_tb.columns[1:],
+                                var_name=['Ocupação'], value_name='Valor')
+
+            # dados sergipe, nordeste e brasil
+            # ordenação dos valores
+            # adição da variável ano
+            df_melted = df_melted.loc[df_melted['Região'].isin(['Brasil', 'Nordeste', 'Sergipe'])]
+            df_melted = df_melted.sort_values(by=['Região', 'Ocupação'], ascending=[True] * 2)
+            df_melted['Ano'] = pd.to_datetime(tb, format='%Y')
+
+            dfs.append(df_melted)
+
+        # união dos dfs
+        # ordenação dos valores a partir das variáveis 'Região', 'Ano' e 'Ocupação'
+        # classificação dos dados
+        df_concat = pd.concat(dfs, ignore_index=True)
+        df_concat.sort_values(by=['Região', 'Ano', 'Ocupação'], ascending=[True] * 3, inplace=True)
+        df_concat[df_concat.columns[:2]] = df_concat[df_concat.columns[:2]].astype('str')
+        df_concat[df_concat.columns[-2]] = df_concat[df_concat.columns[-2]].astype('float64')
+
+        # conversão em arquivo csv
+        to_csv(df_concat, 'grafico_13-8_ibge_indicadores_sociais.csv')
+
+    elif url.startswith('https://apidatalake.tesouro.gov.br'):
+        continue
+        print(f'A baixar o arquivo da url:\n {url} ...')
+
+        '''
+        A API não dispõe de opções para facilitar a coleta de dados histórios; é necessário realizar uma request para
+        cada ano de interesse. Como não é possível verificar o ano da última publicação, foi-se necessário iniciar um 
+        looping que percorresse o ano base (2015) e ano vigente. Similarmente, a aplicação não facilita a coleta de 
+        dados de outros níveis regionais.
+        A coleta de dados a nível estadual e nacional foi realizada no mesmo looping
+        '''
+
+        # definição dos anos de referência
+        base_year = 2015
+        current_year = datetime.datetime.now().year
+
+        dfs = []
+        for y in range(base_year, current_year + 1):
+
+            # coleta de dados a nível estadual ------------------------------------------------------------------------
+            siconfi_url = f"https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rgf?an_exercicio={y}&in_periodicidade=Q" \
+                          f"&nr_periodo=3&co_tipo_demonstrativo=RGF&no_anexo=RGF-Anexo%2002&co_esfera=E&co_poder=E" \
+                          f"&id_ente=28"
+
+            response = open_url(siconfi_url)
+            if response.status_code == 200 and len(response.json()['items']) > 1:
+                print(f'A coletar dados do siconfi referentes ao exercício de {y} ...\nNível regional: Sergipe')
+
+                # seleção das colunas de interesse
+                # seleção do quadrimestre de interesse
+                # seleção das contas de interesse
+                df = pd.DataFrame(response.json()['items'])
+                df = df.loc[:, ['exercicio', 'instituicao', 'uf', 'coluna', 'conta', 'valor']]
+                df = df.loc[df['coluna'] == 'Até o 3º Quadrimestre']
+                df = df.loc[(df['conta'].str.startswith('DÍVIDA CONSOLIDADA LÍQUIDA (DCL)')) |
+                            (df['conta'].str.startswith('RECEITA CORRENTE LÍQUIDA - RCL')) |
+                            (df['conta'].str.startswith('% da DCL sobre a RCL'))]
+
+                dfs.append(df)
+            else:
+                print(f'Não foram encontrados dados referentes ao exercício de {y}!\nNível regional: Sergipe')
+
+            # coleta de dados a nível nacional ------------------------------------------------------------------------
+            siconfi_url = f'https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rgf?an_exercicio={y}&' \
+                          f'in_periodicidade=Q&nr_periodo=3&co_tipo_demonstrativo=RGF&no_anexo=RGF-Anexo%2002&' \
+                          f'co_esfera=U&co_poder=E&id_ente=1'
+
+            response = open_url(siconfi_url)
+            if response.status_code == 200 and len(response.json()['items']) > 1:
+                print(f'A coletar dados do siconfi referentes ao exercício de {y} ...\nNível regional: Brasil')
+
+                # seleção das colunas de interesse
+                # seleção do quadrimestre de interesse
+                # seleção das contas de interesse
+                df = pd.DataFrame(response.json()['items'])
+                df = df.loc[:, ['exercicio', 'instituicao', 'uf', 'coluna', 'conta', 'valor']]
+                df = df.loc[df['coluna'] == 'Até o 3º Quadrimestre']
+                df = df.loc[(df['conta'].str.startswith('DÍVIDA CONSOLIDADA LÍQUIDA (DCL)')) |
+                            (df['conta'].str.startswith('RECEITA CORRENTE LÍQUIDA - RCL')) |
+                            (df['conta'].str.startswith('% da DCL sobre a RCL'))]
+
+                dfs.append(df)
+            else:
+                print(f'Não foram encontrados dados referentes ao exercício de {y}!\nNível regional: Brasil')
+
+            # coleta de dados a nível macroregional -------------------------------------------------------------------
+            ne_states_cod = [27, 29, 23, 21, 25, 26, 22, 24]
+
+            for cod in ne_states_cod:
+                siconfi_url = f'https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rgf?an_exercicio={y}&' \
+                              f'in_periodicidade=Q&nr_periodo=3&co_tipo_demonstrativo=RGF&no_anexo=RGF-Anexo%2002&' \
+                              f'co_esfera=E&co_poder=E&id_ente={cod}'
+
+                response = open_url(siconfi_url)
+                if response.status_code == 200 and len(response.json()['items']) > 1:
+                    print(f'A coletar dados do siconfi referentes ao exercício de {y} ...\nNível regional: Nordeste')
+                    print(f'Código UF: {cod}')
+
+                    # seleção das colunas de interesse
+                    # seleção do quadrimestre de interesse
+                    # seleção das contas de interesse
+                    df = pd.DataFrame(response.json()['items'])
+                    df = df.loc[:, ['exercicio', 'instituicao', 'uf', 'coluna', 'conta', 'valor']]
+                    df = df.loc[df['coluna'] == 'Até o 3º Quadrimestre']
+                    df = df.loc[(df['conta'].str.startswith('DÍVIDA CONSOLIDADA LÍQUIDA (DCL)')) |
+                                (df['conta'].str.startswith('RECEITA CORRENTE LÍQUIDA - RCL')) |
+                                (df['conta'].str.startswith('% da DCL sobre a RCL'))]
+
+                    dfs.append(df)
+                else:
+                    print(f'Não foram encontrados dados referentes ao exercício de {y}!\nNível regional: Nordeste')
+                    print(f'Código UF: {cod}')
+
+        # união dos dfs
+        df_concat = pd.concat(dfs, ignore_index=True)
+
+        # agregação dos dados de estados nordestinos
+        df_ne = df_concat.loc[df_concat['uf'].isin(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'])]
+        df_ne = df_ne.groupby(['exercicio', 'conta'])['valor'].sum().reset_index()
+        df_ne['uf'] = 'NE'
+
+        # dados de sergipe e brasil
+        df_se_br = df_concat.loc[~df_concat['uf'].isin(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN']),
+                                 ['exercicio', 'conta', 'valor', 'uf']]
+
+        # nova união dos dfs
+        # alteração dos valores da coluna 'conta', para fins de filtragem e agregação; eles variavam o final da string
+        # exemplo: RECEITA CORRENTE LÍQUIDA - RCL; RECEITA CORRENTE LÍQUIDA - RCL (IV)
+        df_concat2 = pd.concat([df_se_br, df_ne], ignore_index=True)
+        df_concat2['conta'] = df_concat2['conta'].apply(
+            lambda x: '% da DCL sobre a RCL' if x.startswith('% da DCL sobre a RCL') else (
+                'DÍVIDA CONSOLIDADA LÍQUIDA' if x.startswith('DÍVIDA CONSOLIDADA LÍQUIDA') else
+                'RECEITA CORRENTE LÍQUIDA'))
+
+        # ordenação dos valores
+        df_concat2.sort_values(by=['uf', 'exercicio', 'conta'], ascending=[True] * 3, inplace=True)
+
+        # classificação dos dados
+        df_concat2[df_concat2.columns[0]] = pd.to_datetime(df_concat2[df_concat2.columns[0]], format='%Y')
+        df_concat2[['conta', 'uf']] = df_concat2[['conta', 'uf']].astype('str')
+        df_concat2['valor'] = df_concat2['valor'].astype('float')
+
+        # conversão em arquivo csv
+        to_csv(df_concat2, 'grafico_11-11_siconfi_tesouro.csv')
+
+
+# # ************************
+# # EXTRAÇÃO DE DADOS POR MÉTODO DE COLETA API
+# # TABELAS SIDRA
+# # ************************
+#
+# # informações das figuras para o looping de requisições
+# sidra_figures = {
+#     'figure': ['grafico_4-2', 'grafico_5-4', 'grafico_13-6', 'tabela_13-2'],
+#     'table': ['5603', '1761', '6402', '5434'],
+#     'variable': ['631,706', '631,1243', '4099', '4090,4108'],
+#     'class': ['', '', '86', '888'],
+#     'class_val': ['', '', '95251', '47947,47948,47949,47950,56622,56623,56624,60032']
+# }
+#
+# # códigos nos níveis regionais
+# regions = [('1', 'all'), ('2', '2'), ('3', '28')]
+#
+# df_sidra = pd.DataFrame(sidra_figures)
+#
+# # looping de requisições para cada figura
+# for i in df_sidra.index:
+#     print(f'A baixar tabelas do(a) {df_sidra["figure"][i]}')
+#     # looping das figuras que não dispõem de classificação
+#     if df_sidra['class'][i] == '':
+#         dfs = []
+#         # looping de requisições para cada tabela da figura
+#         for reg in regions:
+#             data = sidrapy.get_table(table_code=df_sidra['table'][i], territorial_level=reg[0],
+#                                      ibge_territorial_code=reg[1],
+#                                      variable=df_sidra['variable'][i], period="all")
+#
+#             # remoção da linha 0, dados para serem usados como rótulos das colunas
+#             # não foram usados porque variam de acordo com a tabela
+#             # seleção das colunas de interesse
+#             data.drop(0, axis='index', inplace=True)
+#             data = data[['D1N', 'D2N', 'D3N', 'V']]
+#             dfs.append(data)
+#
+#             # acrescenta delay às requests
+#             delay_requests(2)
+#
+#         # união dos dfs
+#         # renomeação das colunas
+#         # filtragem de dados a partir do ano 2010
+#         df_concat = pd.concat(dfs, ignore_index=True)
+#         df_concat.columns = ['Região', 'Ano', 'Variável', 'Valor']
+#         df_concat = df_concat.loc[df_concat['Ano'] >= '2010']
+#
+#         # classificação dos dados
+#         df_concat[['Região', 'Variável']] = df_concat[['Região', 'Variável']].astype('str')
+#         df_concat['Ano'] = pd.to_datetime(df_concat['Ano'], format='%Y')
+#         df_concat['Valor'] = df_concat['Valor'].astype('int64')
+#
+#         # conversão em arquivo csv
+#         to_csv(df_concat, df_sidra['figure'][i] + f'_sidra_tb{df_sidra["table"][i]}.csv')
+#
+#     else:
+#         # looping das figuras que dispõem de classificação
+#         if df_sidra['figure'][i] != 'tabela_13-2':
+#             dfs = []
+#             for reg in regions:
+#                 data = sidrapy.get_table(table_code=df_sidra['table'][i], territorial_level=reg[0],
+#                                          ibge_territorial_code=reg[1],
+#                                          variable=df_sidra['variable'][i],
+#                                          classifications={df_sidra['class'][i]: df_sidra['class_val'][i]}, period="all")
+#
+#                 # remoção da linha 0, dados para serem usados como rótulos das colunas
+#                 # não foram usados porque variam de acordo com a tabela
+#                 # seleção das colunas de interesse
+#                 data.drop(0, axis='index', inplace=True)
+#                 data = data[['D1N', 'D2N', 'D3N', 'D4N', 'V']]
+#                 dfs.append(data)
+#
+#                 # acrescenta delay às requests
+#                 delay_requests(2)
+#
+#             # união dos dfs
+#             # renomeação das colunas
+#             # filtragem de dados referentes ao 4º trimestre de cada ano
+#             # seleção dos dígitos referentes ao ano
+#             df_concat = pd.concat(dfs, ignore_index=True)
+#             df_concat.columns = ['Região', 'Ano', 'Variável', 'Classe', 'Valor']
+#             df_concat = df_concat.loc[df_concat['Ano'].str.startswith('4º trimestre')]
+#             df_concat['Ano'] = df_concat['Ano'].apply(lambda x: x[-4:])
+#
+#             # classificação dos dados
+#             df_concat[df_concat.columns[:-1]] = df_concat[df_concat.columns[:-1]].astype('str')
+#             df_concat['Valor'] = df_concat['Valor'].replace('...', '0.0')
+#             df_concat['Valor'] = df_concat['Valor'].astype('float64')
+#
+#             # conversão em arquivo csv
+#             to_csv(df_concat, df_sidra['figure'][i] + f'_sidra_tb{df_sidra["table"][i]}.csv')
+#
+#         else:
+#             dfs = []
+#             for reg in regions:
+#                 data = sidrapy.get_table(table_code=df_sidra['table'][i], territorial_level=reg[0],
+#                                          ibge_territorial_code=reg[1], variable=df_sidra['variable'][i],
+#                                          classifications={df_sidra['class'][i]: df_sidra['class_val'][i]},
+#                                          period="all")
+#
+#                 # remoção da linha 0, dados para serem usados como rótulos das colunas
+#                 # não foram usados porque variam de acordo com a tabela
+#                 # seleção das colunas de interesse
+#                 data.drop(0, axis='index', inplace=True)
+#                 data = data[['MN', 'D1N', 'D2N', 'D3N', 'D4N', 'V']]
+#
+#                 # separação de valores; valores inteiros e percentuais estão armazenados na mesma coluna
+#                 data_ab = data.loc[data['MN'] == 'Mil pessoas']
+#                 data_per = data.loc[data['MN'] == '%']
+#                 data = data_ab.iloc[:, 1:]
+#                 data['Percentual'] = data_per.loc[:, 'V'].to_list()
+#                 dfs.append(data)
+#
+#                 # acrescenta delay às requests
+#                 delay_requests(2)
+#
+#             # união dos dfs
+#             # renomeação das colunas
+#             # filtragem de dados referentes ao 4º trimestre de cada ano
+#             df_concat = pd.concat(dfs, ignore_index=True)
+#             df_concat.columns = ['Região', 'Ano', 'Variável', 'Classe', 'Valor', 'Percentual']
+#             df_concat = df_concat.loc[df_concat['Ano'].str.startswith('4º trimestre')]
+#             df_concat['Ano'] = df_concat['Ano'].apply(lambda x: x[-4:])
+#
+#             # classificação dos dados
+#             df_concat[df_concat.columns[:-2]] = df_concat[df_concat.columns[:-2]].astype('str')
+#             df_concat[df_concat.columns[-2:]] = df_concat[df_concat.columns[-2:]].astype('float64')
+#
+#             # conversão em arquivo csv
+#             to_csv(df_concat, df_sidra['figure'][i] + f'_sidra_tb{df_sidra["table"][i]}.csv')
+
+
+# ************************
+# UPLOAD DE ARQUIVOS PARA REPOSITÓRIO NO GITHUB
+# ************************
+
+# definição do token de acesso
+# inicialização do github
+# acesso ao repositório
+auth = Auth.Token('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')
+g = Github(auth=auth)
+repo = g.get_repo('anuariosocieconomico/T25')
+
+# uploading
+csv_folder = 'NewVersion_Files'
+folder_path_in_github = 'Daniel/csv_files'
+now = datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')
+
+
