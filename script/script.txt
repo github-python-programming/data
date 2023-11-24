@@ -1240,12 +1240,12 @@ else:
 
             # verifica se se arquivo local já existe no diretório, para definir se deve criá-lo ou atualizá-lo
             if file_in_folder:
-                repo.update_file(f'Daniel/data/{csv_file}', f'Arquivo atualizado em {now}.',
+                repo.update_file(f'data/{csv_file}', f'Arquivo atualizado em {now}.',
                                  csv_content, file_in_folder.sha)
                 print(f'Arquivo {csv_file} atualizado no novo diretório.')
                 sleep(1)
             else:
-                repo.create_file(f'Daniel/data/{csv_file}', f'Arquivo criado em {now}.', csv_content)
+                repo.create_file(f'data/{csv_file}', f'Arquivo criado em {now}.', csv_content)
                 sleep(1)
 
 if 'script' not in git_cont:
@@ -1266,7 +1266,7 @@ else:
     file_in_folder = next((script for script in my_folder if script.name == 'script.txt'), None)
 
     if file_in_folder:
-        repo.update_file('Daniel/script/script.txt', f'Arquivo atualizado em {now}', text, file_in_folder.sha)
+        repo.update_file('script/script.txt', f'Arquivo atualizado em {now}', text, file_in_folder.sha)
         print('Script atualizado no diretório.')
         sleep(1)
     else:
