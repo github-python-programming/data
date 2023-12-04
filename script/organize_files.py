@@ -59,7 +59,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_melted[df_melted.columns[2]] = df_melted[df_melted.columns[2]].astype('float64')
 
             # tratamento do título da figura para nomeação do arquivo csv
-            c.to_excel(df_melted, dir_path, 'grafico_7.1_epe-anuario-energia.xlsx')
+            c.to_excel(df_melted, dir_path, 'g7.1.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -93,7 +93,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_concat[df_concat.columns[-1]] = df_concat[df_concat.columns[-1]].astype('str')
 
             # tratamento do título da figura para nomeação do arquivo csv
-            c.to_excel(df_concat, dir_path, 'grafico_8-1_anp_producao_petroleo.xlsx')
+            c.to_excel(df_concat, dir_path, 'g8.1.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -143,7 +143,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
 
             # tratamento do título da figura para nomeação do arquivo
             # conversão em arquivo csv
-            c.to_excel(df_concat, dir_path, 'grafico_8-2_anp_producao_gas_e_lgn.xlsx')
+            c.to_excel(df_concat, dir_path, 'g8.2.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -197,7 +197,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
 
                 # conversão para arquivo csv
                 df_concat = pd.concat(dfs, ignore_index=True)
-                c.to_excel(df_concat, dir_path, k + '_ibge_pib_otica_renda.xlsx')
+                c.to_excel(df_concat, dir_path, k[0] + k.split('_')[1].replace('-', '.') + '.xlsx')
                 n_figs += 1
 
             except Exception as e:
@@ -267,7 +267,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_concat[df_concat.columns[-1]] = df_concat[df_concat.columns[-1]].astype('float64')
 
             # conversão em arquivo csv
-            c.to_excel(df_concat, dir_path, 'tabela_1-1_ibge_especiais.xlsx')
+            c.to_excel(df_concat, dir_path, 't1.1.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -318,7 +318,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_concat[df_concat.columns[-2]] = df_concat[df_concat.columns[-2]].astype('float64')
 
             # conversão em arquivo csv
-            c.to_excel(df_concat, dir_path, 'grafico_13-8_ibge_indicadores_sociais.xlsx')
+            c.to_excel(df_concat, dir_path, 'g13.8.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -406,7 +406,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_united[df_united.columns[-1]] = df_united[df_united.columns[-1]].astype('float64')
 
             # coversão em arquivo csv
-            c.to_excel(df_united, dir_path, 'tabela_17-2_inep_ideb.xlsx')
+            c.to_excel(df_united, dir_path, 't17.2.xlsx')
             n_figs += 1
             ideb = 'OK'
 
@@ -430,7 +430,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_melted[df_melted.columns[1]] = pd.to_datetime(df_melted[df_melted.columns[1]], format='%Y')
             df_melted[df_melted.columns[2]] = df_melted[df_melted.columns[2]].astype('float64')
 
-            c.to_excel(df_melted, dir_name, 'grafico_18-6_tabnet_morbidade.xlsx')
+            c.to_excel(df_melted, dir_name, 'g18.6.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -460,7 +460,7 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             df_melted[df_melted.columns[2]] = df_melted[df_melted.columns[2]].astype('int64')
 
             # conversão em arquivo csv
-            c.to_excel(df_melted, dir_name, 'grafico_19-2_anuario_seguranca_publica.xlsx')
+            c.to_excel(df_melted, dir_name, 'g19.2.xlsx')
             n_figs += 1
 
         except Exception as e:
@@ -691,9 +691,8 @@ to_copy = [f for f in os.listdir(c.dir_name) if 'grafico' in f or 'tabela' in f]
 
 for f in to_copy:
     from_path = os.path.join(c.dir_name, f)
-    file_name = f[:-4]
     df = pd.read_csv(from_path, encoding='utf-8', decimal=',')
-    df.to_excel(os.path.join(dir_name, file_name + '.xlsx'), index=False)
+    df.to_excel(os.path.join(dir_name, f[0] + f.split('_')[1].replace('-', '.') + '.xlsx'), index=False)
 
 # ************************
 # UPLOAD DE ARQUIVOS PARA REPOSITÓRIO NO GITHUB
