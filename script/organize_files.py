@@ -622,10 +622,10 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
             n_figs += 1
 
         except Exception as e:
-            errors['Tabela 19.12'] = str(e)
+            errors['Gráfico 19.12'] = str(e)
 
         try:
-            print('A organizar o arquivo da figura: Gráfico 19.1 ...')
+            print('A organizar o arquivo da figura: Tabela 19.1 ...')
             df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name='Ocorrências')
 
             crimes = ['Roubo a instituição financeira', 'Roubo de carga', 'Roubo de veículo', 'Furto de veículo']
@@ -682,12 +682,10 @@ print(f'Total de arquivos organizados: {n_figs}')
 to_copy = [f for f in os.listdir(c.dir_name) if 'grafico' in f or 'tabela' in f]
 
 for f in to_copy:
-    from_path = os.path.join(c.dir_name, f)
-    to_path = os.path.join(dir_name, f)
-    shutil.copy2(from_path, to_path)
-
-
-
+    if f not in os.listdir(dir_name):
+        from_path = os.path.join(c.dir_name, f)
+        to_path = os.path.join(dir_name, f)
+        shutil.copy2(from_path, to_path)
 
 # ************************
 # UPLOAD DE ARQUIVOS PARA REPOSITÓRIO NO GITHUB
@@ -815,146 +813,3 @@ else:
     sleep(1)
 
 g.close()
-
-
-# # ************************
-# # UPLOAD DE ARQUIVOS PARA REPOSITÓRIO NO GITHUB
-# # ************************
-#
-# # definição do horário para registro de upload ou update dos arquivos
-# now = datetime.datetime.now().strftime('%d/%m/%Y, %H:%M:%S')
-#
-# # caminhos de diretórios
-# repo_path = c.repo_path2
-# git_token = c.git_token2
-# data_git_path = 'data'
-# script_git_path = 'script'
-# doc_git_path = 'doc'
-#
-# # inicialização do repositório
-# auth = Auth.Token(git_token)
-# g = Github(auth=auth)
-# repo = g.get_repo(repo_path)
-# contents = repo.get_contents('')
-#
-# # diretórios no git
-# git_cont = []
-# for content_file in contents:
-#     git_cont.append(content_file.path)
-#
-# # verifica se há a pasta 'data' no diretório
-# if 'data' not in git_cont:
-#     print('Pasta não encontrada. A criar nova pasta no diretório ...')
-#
-#     # upload dos arquivos csv
-#     csv_folder = dir_name
-#     for csv_file in os.listdir(os.path.join(script_path, csv_folder)):
-#         csv_path = os.path.join(script_path, csv_folder, csv_file)
-#
-#         if os.path.isfile(csv_path):
-#             with open(csv_path, 'rb') as file:
-#                 csv_content = file.read()
-#
-#             repo.create_file(f'data/{csv_file}', f'Arquivo criado em {now}.', csv_content)
-#             print(f'Arquivo {csv_file} criado no novo diretório.')
-#             sleep(1)
-# else:
-#     print('\nPasta encontrada. A atualizar os arquivos no diretório ...')
-#
-#     # update dos arquivos csv
-#     my_folder = repo.get_contents(data_git_path)
-#     csv_folder = dir_name
-#     for csv_file in os.listdir(os.path.join(script_path, csv_folder)):
-#         csv_path = os.path.join(script_path, csv_folder, csv_file)
-#
-#         if os.path.isfile(csv_path):
-#             with open(csv_path, 'rb') as file:
-#                 csv_content = file.read()
-#
-#             file_in_folder = next((csv_f for csv_f in my_folder if csv_f.name == csv_file), None)
-#
-#             # verifica se se arquivo local já existe no diretório, para definir se deve criá-lo ou atualizá-lo
-#             if file_in_folder:
-#                 repo.update_file(f'data/{csv_file}', f'Arquivo atualizado em {now}.',
-#                                  csv_content, file_in_folder.sha)
-#                 print(f'Arquivo {csv_file} atualizado no novo diretório.')
-#                 sleep(1)
-#             else:
-#                 repo.create_file(f'data/{csv_file}', f'Arquivo criado em {now}.', csv_content)
-#                 sleep(1)
-#
-# if 'script' not in git_cont:
-#     # upload do script
-#     script_path = 'get_files.py'
-#     script_path2 = 'organize_files'
-#
-#     with open(script_path, 'r', encoding='utf-8') as f:
-#         text = f.read()
-#     with open(script_path2, 'r', encoding='utf-8') as f:
-#         text2 = f.read()
-#
-#     repo.create_file('script/get_files_script.txt', f'Arquivo criado em {now}', text)
-#     repo.create_file('script/organize_files_script.txt', f'Arquivo criado em {now}', text2)
-#     sleep(1)
-# else:
-#     # update do script
-#     my_folder = repo.get_contents(script_git_path)
-#     script_path = 'get_files.py'
-#     script_path2 = 'organize_files.py'
-#
-#     with open(script_path, 'r', encoding='utf-8') as f:
-#         text = f.read()
-#     with open(script_path2, 'r', encoding='utf-8') as f:
-#         text2 = f.read()
-#
-#     file_in_folder = next((script for script in my_folder if script.name == 'get_files_script.txt'), None)
-#     file_in_folder2 = next((script for script in my_folder if script.name == 'organize_files_script.txt'), None)
-#
-#     if file_in_folder:
-#         repo.update_file(f'script/{script_path}_script.txt', f'Arquivo atualizado em {now}',
-#                          text, file_in_folder.sha)
-#         print(f'Script {script_path} atualizado no diretório.')
-#         sleep(1)
-#     else:
-#         repo.create_file(f'script/{script_path}_script.txt', f'Arquivo criado em {now}', text)
-#         print(f'Script {script_path} criado no diretório.')
-#         sleep(1)
-#
-#     if file_in_folder2:
-#         repo.update_file(f'script/{script_path2}_script.txt', f'Arquivo atualizado em {now}',
-#                          text2, file_in_folder2.sha)
-#         print(f'Script {script_path2} atualizado no diretório.')
-#         sleep(1)
-#     else:
-#         repo.create_file(f'script/{script_path2}_script.txt', f'Arquivo criado em {now}', text2)
-#         print(f'Script {script_path2} criado no diretório.')
-#         sleep(1)
-#
-# if 'doc' not in git_cont:
-#     doc_path = 'support_files/documentação.json'
-#
-#     with open(doc_path, 'r', encoding='utf-8') as f:
-#         data = json.load(f)
-#     repo.create_file('doc/documentação.txt', f'Arquivo criado em {now}.',
-#                      json.dumps(data, indent=4, ensure_ascii=False))
-#     sleep(1)
-# else:
-#     my_folder = repo.get_contents(doc_git_path)
-#     doc_path = 'support_files/documentação.json'
-#
-#     with open(doc_path, 'r', encoding='utf-8') as f:
-#         data = json.load(f)
-#
-#     file_in_folder = next((doc_f for doc_f in my_folder if doc_f.name == 'documentação.json'), None)
-#     if file_in_folder:
-#         repo.update_file(f'doc/documentação.txt', f'Arquivo atualizado em {now}.',
-#                          json.dumps(data, indent=4, ensure_ascii=False), file_in_folder.sha)
-#         print('Documentação atualizada no diretório.')
-#         sleep(1)
-#     else:
-#         repo.create_file(f'doc/documentação.txt', f'Arquivo criado em {now}',
-#                          json.dumps(data, indent=4, ensure_ascii=False))
-#         print(f'Documentação atualizada no diretório.')
-#         sleep(1)
-#
-# g.close()
