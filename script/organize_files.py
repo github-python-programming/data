@@ -690,10 +690,10 @@ print(f'Total de arquivos organizados: {n_figs}')
 to_copy = [f for f in os.listdir(c.dir_name) if 'grafico' in f or 'tabela' in f]
 
 for f in to_copy:
-    if f not in os.listdir(dir_name):
-        from_path = os.path.join(c.dir_name, f)
-        to_path = os.path.join(dir_name, f)
-        shutil.copy2(from_path, to_path)
+    from_path = os.path.join(c.dir_name, f)
+    file_name = f[:-4]
+    df = pd.read_csv(from_path, encoding='utf-8', decimal=',')
+    df.to_excel(os.path.join(dir_name, file_name + '.xlsx'), index=False)
 
 # ************************
 # UPLOAD DE ARQUIVOS PARA REPOSITÓRIO NO GITHUB
