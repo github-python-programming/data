@@ -89,11 +89,11 @@ for fig, url in zip(doc_scraping['figure'], doc_scraping['url']):
     elif fig.startswith('Gráfico 8.2'):
         try:
             print(f'A baixar o arquivo da url:\n {url} ...')
-
             # downloading do arquivo
             xpath = '/html/body/div[2]/div[1]/main/div[2]/div/div[4]/div/ul[3]/li[2]/a/@href'
             html = c.get_html(url)
             url_to_get = html.xpath(xpath).get()
+            print(url_to_get)
             file = c.open_url(url_to_get)
 
             c.to_file(dir_path, 'anp_producao_gas.csv', file.content)
@@ -102,8 +102,7 @@ for fig, url in zip(doc_scraping['figure'], doc_scraping['url']):
             url_to_get = html.xpath(xpath).get()
             file = c.open_url(url_to_get)
 
-            c.to_file(c.open_url('anp_producao_lgn.csv'))
-
+            c.to_file(dir_path, 'anp_producao_lgn.csv', file.content)
             n_downs += 1
 
         except Exception as e:
