@@ -466,204 +466,212 @@ for csv_name in os.listdir(os.path.join(script_path, c.dir_name)):
         except Exception as e:
             errors['Gráfico 19.2'] = str(e)
 
-        try:
-            print('A organizar o arquivo da figura: Tabela 19.2 ...')
-            df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name=None)
-
-            # coleta de dados referentes à despesa per capita com segurança pública
-            # seleção das linhas e colunas de interesse
-            # renomeação das colunas
-            df_despesas = df['G65']
-            df_despesas = df_despesas.iloc[6:33, :2]
-            df_despesas.columns = ['Região', 'Valor']
-
-            # dados sergipe
-            df_despesas_se = df_despesas.loc[df_despesas['Região'] == 'Sergipe']
-
-            # dados nordeste
-            ne_states = ['Alagoas', 'Bahia', 'Ceará', 'Maranhão', 'Paraíba',
-                         'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe']
-            df_despesas_ne = df_despesas.loc[df_despesas['Região'].isin(ne_states)]
-            df_despesas_ne.iloc[:, 0] = 'Nordeste'
-            df_despesas_ne = df_despesas_ne.groupby('Região')['Valor'].sum().reset_index()
-
-            # dados brasil
-            df_despesas_br = df_despesas.iloc[:]
-            df_despesas_br.iloc[:, 0] = 'Brasil'
-            df_despesas_br = df_despesas_br.groupby('Região')['Valor'].sum().reset_index()
-
-            # união dos dfs
-            # adição da variável ano
-            # adição da variável classe
-            df_despesas_united = pd.concat([df_despesas_br, df_despesas_ne, df_despesas_se], ignore_index=True)
-            df_despesas_united['Ano'] = df['G65'].iloc[0, 0][-4:]
-            df_despesas_united['Classe'] = 'Despesa per capita com Segurança Pública'
-
-            # coleta de dados referentes à participação das despesas com segurança pública
-            # renomeação das colunas
-            # seleção das linhas de interesse
-            # remoção de linhas vazias
-            df_participacao = df['T55']
-            df_participacao.columns = df_participacao.iloc[4]
-            df_participacao = df_participacao.iloc[6:]
-            df_participacao = df_participacao.dropna(axis='index')
-
-            # reorganização da tabela; variável ano passada para o eixo y
-            df_participacao_melted = df_participacao.melt(id_vars=df_participacao.columns[0],
-                                                          value_vars=list(df_participacao.columns[1:]),
-                                                          var_name=['Ano'], value_name='Valor')
-            df_participacao_melted['Ano'] = df_participacao_melted['Ano'].astype('int64')
-
-            # dados sergipe
-            df_participacao_se = df_participacao_melted.loc[
-                df_participacao_melted[df_participacao_melted.columns[0]] == 'Sergipe']
-
-            # dados nordeste
-            df_participacao_ne = df_participacao_melted.loc[
-                df_participacao_melted[df_participacao_melted.columns[0]].isin(ne_states)]
-            df_participacao_ne.iloc[:, 0] = 'Nordeste'
-            df_participacao_ne = df_participacao_ne.groupby([df_participacao_ne.columns[0],
-                                                             df_participacao_ne.columns[1]])[
-                'Valor'].mean().reset_index()
-
-            # dados brasil
-            df_participacao_br = df_participacao_melted.loc[
-                df_participacao_melted[df_participacao_melted.columns[0]] == 'União']
-            df_participacao_br.iloc[:, 0] = 'Brasil'
-
-            # união dos dfs
-            df_participacao_united = pd.concat([df_participacao_br, df_participacao_ne, df_participacao_se],
-                                               ignore_index=True)
-            df_participacao_united['Classe'] = 'Participação das despesas com Segurança Pública'
-            df_participacao_united = df_participacao_united.rename(
-                columns={df_participacao_united.columns[0]: 'Região'})
-
-            # coleta de dados referentes à razão preso/vaga
-            # organização da tabela para seleção das linhas de interesse
-            df_preso = df['T75']
-            df_preso.columns = df_preso.iloc[5]
-            df_preso = df_preso.dropna(axis='index')
-            df_preso = df_preso.iloc[:, [0, -2, -1]]
-            df_preso.columns = [str(int(col)) if not pd.isna(col) else 'Região' for col in df_preso.columns]
-            df_preso = df_preso.melt(id_vars=['Região'], value_vars=list(df_preso.columns[1:]),
-                                     var_name=['Ano'], value_name='Valor')
-
-            # dados sergipe
-            df_preso_se = df_preso.loc[df_preso['Região'] == 'Sergipe']
-
-            # dados sergipe
-            df_preso_ne = df_preso.loc[df_preso['Região'].isin(ne_states)]
-            df_preso_ne.iloc[:, 0] = 'Nordeste'
-            df_preso_ne = df_preso_ne.groupby(['Região', 'Ano'])['Valor'].mean().reset_index()
-
-            # dados brasil
-            df_preso_br = df_preso.loc[df_preso['Região'].str.startswith('Brasil')]
-
-            # união dos dfs
-            df_preso_united = pd.concat([df_preso_br, df_preso_ne, df_preso_se], ignore_index=True)
-            df_preso_united['Classe'] = 'Razão preso/vaga'
-
-            # união dos dfs de cada aba de interesse
-            df_united = pd.concat([df_despesas_united, df_participacao_united, df_preso_united], ignore_index=True)
-            df_united['Região'] = df_united['Região'].apply(lambda x: re.sub(r'\(\d+\)', '', x))
-            df_united = df_united.sort_values(by=['Região', 'Ano', 'Classe'], ascending=[True] * 3)
-
-            # classificação dos dados
-            df_united[df_united.columns[0]] = df_united[df_united.columns[0]].astype('str')
-            df_united[df_united.columns[1]] = df_united[df_united.columns[1]].astype('float64')
-            df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
-            df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
-
-            # adicionado após conversa para remoção de dados agregados manualmente
-            df_united = df_united.loc[df_united['Região'] == 'Sergipe']
-
-            # conversão em arquivo csv
-            c.to_excel(df_united, dir_name, 'tabela_19-2_anuario_seguranca_publica.xlsx')
-            n_figs += 1
-
-        except Exception as e:
-            errors['Tabela 19.2'] = str(e)
+        '''
+        Bloco de comando ignorado por falta de dados
+        '''
+        continue
+        # try:
+        #     print('A organizar o arquivo da figura: Tabela 19.2 ...')
+        #     df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name=None)
+        #
+        #     # coleta de dados referentes à despesa per capita com segurança pública
+        #     # seleção das linhas e colunas de interesse
+        #     # renomeação das colunas
+        #     df_despesas = df['G65']
+        #     df_despesas = df_despesas.iloc[6:33, :2]
+        #     df_despesas.columns = ['Região', 'Valor']
+        #
+        #     # dados sergipe
+        #     df_despesas_se = df_despesas.loc[df_despesas['Região'] == 'Sergipe']
+        #
+        #     # dados nordeste
+        #     ne_states = ['Alagoas', 'Bahia', 'Ceará', 'Maranhão', 'Paraíba',
+        #                  'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe']
+        #     df_despesas_ne = df_despesas.loc[df_despesas['Região'].isin(ne_states)]
+        #     df_despesas_ne.iloc[:, 0] = 'Nordeste'
+        #     df_despesas_ne = df_despesas_ne.groupby('Região')['Valor'].sum().reset_index()
+        #
+        #     # dados brasil
+        #     df_despesas_br = df_despesas.iloc[:]
+        #     df_despesas_br.iloc[:, 0] = 'Brasil'
+        #     df_despesas_br = df_despesas_br.groupby('Região')['Valor'].sum().reset_index()
+        #
+        #     # união dos dfs
+        #     # adição da variável ano
+        #     # adição da variável classe
+        #     df_despesas_united = pd.concat([df_despesas_br, df_despesas_ne, df_despesas_se], ignore_index=True)
+        #     df_despesas_united['Ano'] = df['G65'].iloc[0, 0][-4:]
+        #     df_despesas_united['Classe'] = 'Despesa per capita com Segurança Pública'
+        #
+        #     # coleta de dados referentes à participação das despesas com segurança pública
+        #     # renomeação das colunas
+        #     # seleção das linhas de interesse
+        #     # remoção de linhas vazias
+        #     df_participacao = df['T55']
+        #     df_participacao.columns = df_participacao.iloc[4]
+        #     df_participacao = df_participacao.iloc[6:]
+        #     df_participacao = df_participacao.dropna(axis='index')
+        #
+        #     # reorganização da tabela; variável ano passada para o eixo y
+        #     df_participacao_melted = df_participacao.melt(id_vars=df_participacao.columns[0],
+        #                                                   value_vars=list(df_participacao.columns[1:]),
+        #                                                   var_name=['Ano'], value_name='Valor')
+        #     df_participacao_melted['Ano'] = df_participacao_melted['Ano'].astype('int64')
+        #
+        #     # dados sergipe
+        #     df_participacao_se = df_participacao_melted.loc[
+        #         df_participacao_melted[df_participacao_melted.columns[0]] == 'Sergipe']
+        #
+        #     # dados nordeste
+        #     df_participacao_ne = df_participacao_melted.loc[
+        #         df_participacao_melted[df_participacao_melted.columns[0]].isin(ne_states)]
+        #     df_participacao_ne.iloc[:, 0] = 'Nordeste'
+        #     df_participacao_ne = df_participacao_ne.groupby([df_participacao_ne.columns[0],
+        #                                                      df_participacao_ne.columns[1]])[
+        #         'Valor'].mean().reset_index()
+        #
+        #     # dados brasil
+        #     df_participacao_br = df_participacao_melted.loc[
+        #         df_participacao_melted[df_participacao_melted.columns[0]] == 'União']
+        #     df_participacao_br.iloc[:, 0] = 'Brasil'
+        #
+        #     # união dos dfs
+        #     df_participacao_united = pd.concat([df_participacao_br, df_participacao_ne, df_participacao_se],
+        #                                        ignore_index=True)
+        #     df_participacao_united['Classe'] = 'Participação das despesas com Segurança Pública'
+        #     df_participacao_united = df_participacao_united.rename(
+        #         columns={df_participacao_united.columns[0]: 'Região'})
+        #
+        #     # coleta de dados referentes à razão preso/vaga
+        #     # organização da tabela para seleção das linhas de interesse
+        #     df_preso = df['T75']
+        #     df_preso.columns = df_preso.iloc[5]
+        #     df_preso = df_preso.dropna(axis='index')
+        #     df_preso = df_preso.iloc[:, [0, -2, -1]]
+        #     df_preso.columns = [str(int(col)) if not pd.isna(col) else 'Região' for col in df_preso.columns]
+        #     df_preso = df_preso.melt(id_vars=['Região'], value_vars=list(df_preso.columns[1:]),
+        #                              var_name=['Ano'], value_name='Valor')
+        #
+        #     # dados sergipe
+        #     df_preso_se = df_preso.loc[df_preso['Região'] == 'Sergipe']
+        #
+        #     # dados sergipe
+        #     df_preso_ne = df_preso.loc[df_preso['Região'].isin(ne_states)]
+        #     df_preso_ne.iloc[:, 0] = 'Nordeste'
+        #     df_preso_ne = df_preso_ne.groupby(['Região', 'Ano'])['Valor'].mean().reset_index()
+        #
+        #     # dados brasil
+        #     df_preso_br = df_preso.loc[df_preso['Região'].str.startswith('Brasil')]
+        #
+        #     # união dos dfs
+        #     df_preso_united = pd.concat([df_preso_br, df_preso_ne, df_preso_se], ignore_index=True)
+        #     df_preso_united['Classe'] = 'Razão preso/vaga'
+        #
+        #     # união dos dfs de cada aba de interesse
+        #     df_united = pd.concat([df_despesas_united, df_participacao_united, df_preso_united], ignore_index=True)
+        #     df_united['Região'] = df_united['Região'].apply(lambda x: re.sub(r'\(\d+\)', '', x))
+        #     df_united = df_united.sort_values(by=['Região', 'Ano', 'Classe'], ascending=[True] * 3)
+        #
+        #     # classificação dos dados
+        #     df_united[df_united.columns[0]] = df_united[df_united.columns[0]].astype('str')
+        #     df_united[df_united.columns[1]] = df_united[df_united.columns[1]].astype('float64')
+        #     df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
+        #     df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
+        #
+        #     # adicionado após conversa para remoção de dados agregados manualmente
+        #     df_united = df_united.loc[df_united['Região'] == 'Sergipe']
+        #
+        #     # conversão em arquivo csv
+        #     c.to_excel(df_united, dir_name, 'tabela_19-2_anuario_seguranca_publica.xlsx')
+        #     n_figs += 1
+        #
+        # except Exception as e:
+        #     errors['Tabela 19.2'] = str(e)
 
     elif csv_name.startswith('sinesp'):
-        try:
-            print('A organizar o arquivo da figura: Gráfico 19.12 ...')
-            df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name='Ocorrências')
-
-            # dados sergipe
-            df_se = df.loc[(df['UF'] == 'Sergipe') & (df['Tipo Crime'] == 'Estupro')]
-
-            # dados nordeste
-            df_ne = df.loc[(df['UF'].isin(['Alagoas', 'Bahia', 'Ceará', 'Maranhão',
-                                           'Paraíba', 'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe'])) &
-                           (df['Tipo Crime'] == 'Estupro')]
-            df_ne.iloc[:len(df_ne), 0] = 'Nordeste'
-            df_ne = df_ne.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
-
-            # dados brasil
-            df_br = df.loc[df['Tipo Crime'] == 'Estupro']
-            df_br.iloc[:len(df_br), 0] = 'Brasil'
-            df_br = df_br.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
-
-            # união dos dfs
-            df_united = pd.concat([df_br, df_ne, df_se], ignore_index=True)
-            df_united.rename(columns={'UF': 'Região'}, inplace=True)
-
-            # classificação dos dados
-            df_united[df_united.columns[:2]] = df_united[df_united.columns[:2]].astype('str')
-            df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
-            df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
-            df_united[df_united.columns[-1]] = df_united[df_united.columns[-1]].astype('int64')
-
-            # adicionado após conversa para remoção de dados agregados manualmente
-            df_united = df_united.loc[df_united['Região'] == 'Sergipe']
-
-            # conversão em csv
-            c.to_excel(df_united, dir_name, 'grafico-19-12_sinesp_ocorrencias_criminais.xlsx')
-            n_figs += 1
-
-        except Exception as e:
-            errors['Gráfico 19.12'] = str(e)
-
-        try:
-            print('A organizar o arquivo da figura: Tabela 19.1 ...')
-            df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name='Ocorrências')
-
-            crimes = ['Roubo a instituição financeira', 'Roubo de carga', 'Roubo de veículo', 'Furto de veículo']
-            ne_states = ['Alagoas', 'Bahia', 'Ceará', 'Maranhão',
-                         'Paraíba', 'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe']
-
-            # dados sergipe
-            df_se = df.loc[(df['UF'] == 'Sergipe') & df['Tipo Crime'].isin(crimes)]
-
-            # dados nordeste
-            df_ne = df.loc[(df['UF'].isin(ne_states)) & (df['Tipo Crime'].isin(crimes))]
-            df_ne.iloc[:len(df_ne), 0] = 'Nordeste'
-            df_ne = df_ne.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
-
-            # dados brasil
-            df_br = df.loc[df['Tipo Crime'].isin(crimes)]
-            df_br.iloc[:len(df_br), 0] = 'Brasil'
-            df_br = df_br.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
-
-            # união dos dfs
-            df_united = pd.concat([df_br, df_ne, df_se], ignore_index=True)
-            df_united.rename(columns={'UF': 'Região'}, inplace=True)
-
-            # classificação dos dados
-            df_united[df_united.columns[:2]] = df_united[df_united.columns[:2]].astype('str')
-            df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
-            df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
-            df_united[df_united.columns[-1]] = df_united[df_united.columns[-1]].astype('int64')
-
-            # adicionado após conversa para remoção de dados agregados manualmente
-            df_united = df_united.loc[df_united['Região'] == 'Sergipe']
-
-            # conversão em csv
-            c.to_excel(df_united, dir_name, 'tabela_19-1_sinesp_ocorrencias_criminais.xlsx')
-            n_figs += 1
-
-        except Exception as e:
-            errors['Tabela 19.1'] = str(e)
+        '''
+        Bloco de comando ignorado por falta de dados
+        '''
+        continue
+        # try:
+        #     print('A organizar o arquivo da figura: Gráfico 19.12 ...')
+        #     df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name='Ocorrências')
+        #
+        #     # dados sergipe
+        #     df_se = df.loc[(df['UF'] == 'Sergipe') & (df['Tipo Crime'] == 'Estupro')]
+        #
+        #     # dados nordeste
+        #     df_ne = df.loc[(df['UF'].isin(['Alagoas', 'Bahia', 'Ceará', 'Maranhão',
+        #                                    'Paraíba', 'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe'])) &
+        #                    (df['Tipo Crime'] == 'Estupro')]
+        #     df_ne.iloc[:len(df_ne), 0] = 'Nordeste'
+        #     df_ne = df_ne.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
+        #
+        #     # dados brasil
+        #     df_br = df.loc[df['Tipo Crime'] == 'Estupro']
+        #     df_br.iloc[:len(df_br), 0] = 'Brasil'
+        #     df_br = df_br.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
+        #
+        #     # união dos dfs
+        #     df_united = pd.concat([df_br, df_ne, df_se], ignore_index=True)
+        #     df_united.rename(columns={'UF': 'Região'}, inplace=True)
+        #
+        #     # classificação dos dados
+        #     df_united[df_united.columns[:2]] = df_united[df_united.columns[:2]].astype('str')
+        #     df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
+        #     df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
+        #     df_united[df_united.columns[-1]] = df_united[df_united.columns[-1]].astype('int64')
+        #
+        #     # adicionado após conversa para remoção de dados agregados manualmente
+        #     df_united = df_united.loc[df_united['Região'] == 'Sergipe']
+        #
+        #     # conversão em csv
+        #     c.to_excel(df_united, dir_name, 'grafico-19-12_sinesp_ocorrencias_criminais.xlsx')
+        #     n_figs += 1
+        #
+        # except Exception as e:
+        #     errors['Gráfico 19.12'] = str(e)
+        #
+        # try:
+        #     print('A organizar o arquivo da figura: Tabela 19.1 ...')
+        #     df = c.open_file(os.path.join(script_path, c.dir_name), csv_name, 'xls', sheet_name='Ocorrências')
+        #
+        #     crimes = ['Roubo a instituição financeira', 'Roubo de carga', 'Roubo de veículo', 'Furto de veículo']
+        #     ne_states = ['Alagoas', 'Bahia', 'Ceará', 'Maranhão',
+        #                  'Paraíba', 'Pernambuco', 'Piauí', 'Rio Grande do Norte', 'Sergipe']
+        #
+        #     # dados sergipe
+        #     df_se = df.loc[(df['UF'] == 'Sergipe') & df['Tipo Crime'].isin(crimes)]
+        #
+        #     # dados nordeste
+        #     df_ne = df.loc[(df['UF'].isin(ne_states)) & (df['Tipo Crime'].isin(crimes))]
+        #     df_ne.iloc[:len(df_ne), 0] = 'Nordeste'
+        #     df_ne = df_ne.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
+        #
+        #     # dados brasil
+        #     df_br = df.loc[df['Tipo Crime'].isin(crimes)]
+        #     df_br.iloc[:len(df_br), 0] = 'Brasil'
+        #     df_br = df_br.groupby(['UF', 'Tipo Crime', 'Ano', 'Mês'])['Ocorrências'].sum().reset_index()
+        #
+        #     # união dos dfs
+        #     df_united = pd.concat([df_br, df_ne, df_se], ignore_index=True)
+        #     df_united.rename(columns={'UF': 'Região'}, inplace=True)
+        #
+        #     # classificação dos dados
+        #     df_united[df_united.columns[:2]] = df_united[df_united.columns[:2]].astype('str')
+        #     df_united[df_united.columns[2]] = pd.to_datetime(df_united[df_united.columns[2]], format='%Y')
+        #     df_united[df_united.columns[3]] = df_united[df_united.columns[3]].astype('str')
+        #     df_united[df_united.columns[-1]] = df_united[df_united.columns[-1]].astype('int64')
+        #
+        #     # adicionado após conversa para remoção de dados agregados manualmente
+        #     df_united = df_united.loc[df_united['Região'] == 'Sergipe']
+        #
+        #     # conversão em csv
+        #     c.to_excel(df_united, dir_name, 'tabela_19-1_sinesp_ocorrencias_criminais.xlsx')
+        #     n_figs += 1
+        #
+        # except Exception as e:
+        #     errors['Tabela 19.1'] = str(e)
 
 if errors:
     try:
