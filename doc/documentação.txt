@@ -44,15 +44,15 @@
         "GRÁFICO 19.12": [
             "O site fornecido na documentação não dispõe de dados para download. Para realizar a coleta de dados, acessou-se o site https://dados.mj.gov.br/dataset/sistema-nacional-de-estatisticas-de-seguranca-publica/resource/feeae05e-faba-406c-8a4a-512aec91a9d1.",
             "Diferentemente da documentação, os dados fornecidos na última edição do arquivo são valores inteiros, não taxas.",
-            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. Para fins de comparação, a partir de dados disponíveis na própria tabela fonte, somaram-se os dados de cada estado do país para obtenção do valor a nível nacional, como também se somaram os dados de cada estado da região Nordeste para obtenção do valor a nível macrorregional."
+            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. O arquivo não será enviado para o repositório."
         ],
         "TABELA 19.1": [
             "O site fornecido na documentação não dispõe de dados para download. Para realizar a coleta de dados, acessou-se o site https://dados.mj.gov.br/dataset/sistema-nacional-de-estatisticas-de-seguranca-publica/resource/feeae05e-faba-406c-8a4a-512aec91a9d1.",
             "Diferentemente da documentação, os dados fornecidos na última edição do arquivo são valores inteiros, não taxas.",
-            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. Para fins de comparação, a partir de dados disponíveis na própria tabela fonte, somaram-se os dados de cada estado do país para obtenção do valor a nível nacional, como também se somaram os dados de cada estado da região Nordeste para obtenção do valor a nível macrorregional."
+            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. O arquivo não será enviado para o repositório."
         ],
         "TABELA 19.2": [
-            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. Para fins de comparação, a partir de dados disponíveis na própria tabela fonte, somaram-se os dados de cada estado do país para obtenção do valor “Despesa per capita” a nível nacional, como também se somaram os dados de cada estado da região Nordeste para obtenção do valor a nível macrorregional. De modo similar, obteve-se a média das variáveis “Participação das Despesas com Segurança Pública” e “Razão preso/vaga” para o nível macrorregional; dados do nível nacional estão disponibilizados para estas duas.",
+            "A tabela original não dispõe de dados agregados por outro nível regional além do estadual. O arquivo não será enviado para o repositório.",
             "Na documentação é pedido dados a partir de 2015, porém na última publicação não há dados históricos. A coleta automática de publicações anteriores é inviável, pois elas não seguem uma padronização no que se refere à ordenação ou à rotulação das abas, sendo variadas a cada arquivo.",
             "Na publicação não há informações que indiquem se a despesa per capita com segurança pública é calculada por habitante ou por preso. Os dados são anuais."
         ]
